@@ -41,6 +41,16 @@ export function AuthProvider({ children }) {
         return user;    
     };
 
+    const register = async (name, email, password) => {
+        const res = await api.post("/auth/register", { name, email, password });
+        const { token, user } = res.data.data;
+
+        localStorage.setItem("token", token);
+        setUser(user);
+
+        return user;
+    };
+
     const logout = () => {
         localStorage.removeItem("token");
         setUser(null);
@@ -52,6 +62,7 @@ export function AuthProvider({ children }) {
         user,
         loading,
         login,
+        register,
         logout,
         isAdmin: user?.role === "admin",
       }}

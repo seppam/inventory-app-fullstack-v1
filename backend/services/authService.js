@@ -28,7 +28,10 @@ exports.register = async (data) => {
     password: hashedPassword,
   });
 
-  return user;
+  const token = generateToken(user);
+  user.password = undefined;
+
+  return { user, token };
 };
 
 exports.login = async (email, password) => {

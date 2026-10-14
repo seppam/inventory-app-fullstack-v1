@@ -1,26 +1,25 @@
 import { useEffect, useState } from "react";
 import api from "../api/axios";
+import toast from "react-hot-toast";
+import { Card, PageHeader, EmptyState, LoadingSpinner } from "../components/ui";
+import { Tag, Plus, Pencil, Trash2, Search, X, Edit2 } from "lucide-react";
 
 function CategoriesPage() {
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  const [form, setForm] = useState({
-    name: "",
-  });
-
-  // ==============================
-  // Fetch Categories
-  // ==============================
   const fetchCategories = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const res = await api.get("/categories");
       setCategories(res.data.data);
     } catch (err) {
-      console.error(err);
+      toast.error("Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -30,189 +29,171 @@ function CategoriesPage() {
     fetchCategories();
   }, []);
 
-  // ==============================
-  // Create / Update
-  // ==============================
+  const openCreate = () => {
+    setEditingId(null);
+    setName("");
+    setShowModal(true);
+  };
+
+  const openEdit = (cat) => {
+    setEditingId(cat._id);
+    setName(cat.name);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    if (!name.trim()) return;
+    setSubmitting(true);
     try {
       if (editingId) {
-        await api.put(`/categories/${editingId}`, form);
-        setEditingId(null);
+        await api.put(`/categories/${editingId}`, { name });
+        toast.success("Category updated");
       } else {
-        await api.post("/categories", form);
+        await api.post("/categories", { name });
+        toast.success("Category created");
       }
-
-      setForm({ name: "" });
+      setShowModal(false);
       fetchCategories();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed");
+      toast.error(err.response?.data?.message || "Operation failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // ==============================
-  // Edit
-  // ==============================
-  const handleEdit = (category) => {
-    setEditingId(category._id);
-    setForm({ name: category.name });
-  };
-
-  // ==============================
-  // Delete
-  // ==============================
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this category?")) return;
-
     try {
       await api.delete(`/categories/${id}`);
+      toast.success("Category deleted");
       fetchCategories();
     } catch (err) {
-      alert("Failed to delete");
+      toast.error(err.response?.data?.message || "Failed to delete");
     }
   };
 
-  // ==============================
-  // Filter
-  // ==============================
-  const filteredCategories = categories.filter((cat) =>
-    cat.name.toLowerCase().includes(searchInput.toLowerCase())
+  const filtered = categories.filter((c) =>
+    c.name.toLowerCase().includes(searchInput.toLowerCase())
   );
 
   return (
-    <div className="space-y-6">
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Category Management
-        </h1>
-        <p className="text-gray-500 text-sm">
-          Manage your product categories
-        </p>
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <PageHeader
+          title="Categories"
+          subtitle={`${categories.length} categories`}
+        />
+        <button onClick={openCreate} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Add Category
+        </button>
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-xl shadow">
-        <input
-          type="text"
-          placeholder="Search category..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          className="border rounded-lg px-4 py-2 w-full md:w-1/3 focus:ring-2 focus:ring-blue-500 outline-none"
-        />
-      </div>
+      <Card padding="p-4" className="mb-4">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search categories..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="input pl-9"
+          />
+        </div>
+      </Card>
 
-      {/* Grid Layout */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      {/* Grid */}
+      {loading ? (
+        <LoadingSpinner />
+      ) : filtered.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Tag}
+            title="No categories found"
+            description={
+              searchInput
+                ? "No categories match your search."
+                : "Create your first category to organize products."
+            }
+            action={
+              !searchInput && (
+                <button onClick={openCreate} className="btn-primary">
+                  <Plus className="w-4 h-4" /> Add Category
+                </button>
+              )
+            }
+          />
+        </Card>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((cat) => (
+            <Card key={cat._id} padding="p-4" className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-lg bg-brand-50 flex items-center justify-center flex-shrink-0">
+                  <Tag className="w-4 h-4 text-brand-500" />
+                </div>
+                <p className="text-sm font-medium text-slate-800 truncate">{cat.name}</p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <button
+                  onClick={() => openEdit(cat)}
+                  className="btn-ghost p-1.5 text-slate-400 hover:text-brand-600"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(cat._id)}
+                  className="btn-ghost p-1.5 text-slate-400 hover:text-red-500"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
-        {/* ================= FORM ================= */}
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">
-            {editingId ? "Edit Category" : "Create Category"}
-          </h2>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <input
-              type="text"
-              placeholder="Category name"
-              value={form.name}
-              onChange={(e) =>
-                setForm({ ...form, name: e.target.value })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-              required
-            />
-            <button
-              type="submit"
-              className={`w-full py-2 text-white rounded-lg transition ${
-                editingId
-                  ? "bg-yellow-500 hover:bg-yellow-600"
-                  : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {editingId ? "Update" : "Create"}
-            </button>
-
-            {editingId && (
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingId(null);
-                  setForm({ name: "" });
-                }}
-                className="px-4 py-2 bg-gray-400 text-white rounded-lg hover:bg-gray-500"
-              >
-                Cancel
+      {/* Create/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+          <div className="bg-white rounded-2xl shadow-card-lg w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {editingId ? "Edit Category" : "New Category"}
+              </h2>
+              <button onClick={() => setShowModal(false)} className="btn-ghost p-1.5">
+                <X className="w-4 h-4" />
               </button>
-            )}
-          </form>
-        </div>
-
-        {/* ================= TABLE ================= */}
-        <div className="bg-white p-6 rounded-xl shadow lg:col-span-2">
-          <h2 className="text-lg font-semibold mb-4">
-            Category List
-          </h2>
-
-          {loading ? (
-            <p>Loading...</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-gray-600">
-                    <th className="py-3">Name</th>
-                    <th className="py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filteredCategories.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="2"
-                        className="text-center py-6 text-gray-400"
-                      >
-                        No categories found
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredCategories.map((cat) => (
-                      <tr
-                        key={cat._id}
-                        className="border-b hover:bg-gray-50 transition"
-                      >
-                        <td className="py-3 font-medium">
-                          {cat.name}
-                        </td>
-
-                        <td className="py-3 text-right space-x-4">
-                          <button
-                            onClick={() => handleEdit(cat)}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            onClick={() => handleDelete(cat._id)}
-                            className="text-red-600 hover:underline"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
             </div>
-          )}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Category Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Electronics"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">
+                  Cancel
+                </button>
+                <button type="submit" disabled={submitting} className="btn-primary flex-1">
+                  {submitting ? "Saving..." : editingId ? "Update" : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }
