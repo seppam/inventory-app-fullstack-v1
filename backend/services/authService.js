@@ -23,8 +23,10 @@ exports.register = async (data) => {
 
   const hashedPassword = await bcrypt.hash(data.password, 10);
 
+  // Only whitelist fields: never accept "role" from the client (privilege escalation).
   const user = await User.create({
-    ...data,
+    name: data.name,
+    email: data.email,
     password: hashedPassword,
   });
 

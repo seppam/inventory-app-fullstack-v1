@@ -45,7 +45,7 @@ function ProductsPage() {
       const res = await api.get(`/products?${params}`);
       setProducts(res.data.data.products);
       setPagination(res.data.data.pagination);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load products");
     } finally {
       setLoading(false);
@@ -74,6 +74,7 @@ function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
   const openCreate = () => {
@@ -125,7 +126,7 @@ function ProductsPage() {
       await api.delete(`/products/${id}`);
       toast.success("Product deleted");
       fetchProducts();
-    } catch (err) {
+    } catch {
       toast.error("Delete failed");
     }
   };

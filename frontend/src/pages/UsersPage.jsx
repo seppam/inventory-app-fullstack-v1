@@ -14,7 +14,7 @@ function UsersPage() {
       setLoading(true);
       const res = await api.get("/users");
       setUsers(res.data.data);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load users");
     } finally {
       setLoading(false);

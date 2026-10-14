@@ -18,7 +18,7 @@ function CategoriesPage() {
       setLoading(true);
       const res = await api.get("/categories");
       setCategories(res.data.data);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load categories");
     } finally {
       setLoading(false);
